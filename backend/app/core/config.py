@@ -1,0 +1,20 @@
+import os 
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+VERCEL_FRONTEND_URL = os.getenv("VERCEL_URL")
+
+GROQ_MODEL = os.getenv("GROQ_MODEL")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL")
+
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH")
+
+SUPABASE_MODE = SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY is not None
