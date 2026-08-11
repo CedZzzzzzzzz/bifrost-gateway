@@ -1,3 +1,6 @@
+import ReactMarkdown from "react-markdown"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { ChatBox } from "./components/ChatBox"
 import { ResponseCard } from "./components/ResponseCard"
 import { useChat } from "./hooks/useChat"
@@ -11,7 +14,7 @@ function App() {
       {/* Header */}
       <div className="w-full max-w-2xl flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Bifrost Gateway</h1>
+          <h1 className="text-2xl font-bold text-white">⚡ Bifrost Gateway</h1>
           <p className="text-zinc-500 text-sm">AI Proxy & Token Optimization Middleware</p>
         </div>
         <button
@@ -31,26 +34,53 @@ function App() {
               className={`px-4 py-3 rounded-lg text-sm ${
                 message.role === "user"
                   ? "bg-indigo-600 text-white self-end max-w-lg ml-auto"
-                  : "bg-zinc-800 text-zinc-100 self-start max-w-lg"
+                  : "bg-zinc-800 text-zinc-100 self-start w-full prose prose-invert prose-sm max-w-none"
               }`}
             >
-              {message.content}
+              {message.role === "user" ? (
+                message.content
+              ) : (
+                <div className="flex flex-col gap-3">
+
+                  {index === messages.length - 1 && response && (
+                    <ResponseCard response={response} />
+                  )}
+
+                  <ReactMarkdown
+                    components={{
+                      code({ node, inline, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || "")
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            style={oneDark}
+                            language={match[1]}
+                            PreTag="div"
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, "")}
+                          </SyntaxHighlighter>
+                        ) : (
+                          <code className="bg-zinc-700 px-1 py-0.5 rounded text-xs" {...props}>
+                            {children}
+                          </code>
+                        )
+                      }
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+
+                </div>
+              )}
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Response Metadata */}
-      {response && (
-        <div className="w-full max-w-2xl mb-6">
-          <ResponseCard response={response} />
         </div>
       )}
 
       {/* Error */}
       {error && (
         <div className="w-full max-w-2xl mb-4 px-4 py-3 rounded-lg bg-red-950 border border-red-500 text-red-400 text-sm">
-          ❗ {error}
+          ⚠️ {error}
         </div>
       )}
 
