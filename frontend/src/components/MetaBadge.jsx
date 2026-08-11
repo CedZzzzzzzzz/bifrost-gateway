@@ -10,7 +10,7 @@ export function MetaBadge({ source, provider, tokensSaved, contextHash }) {
         <span className={`px-3 py-0.5 rounded-full text-white font-bold ${
           tokensSaved ? "bg-green-500" : "bg-indigo-500"
         }`}>
-          {tokensSaved ? "✦ Cache Hit" : "✅ Live"}
+          {tokensSaved ? "Cache Hit" : "✅ Live"}
         </span>
 
         <span className="text-zinc-400">
