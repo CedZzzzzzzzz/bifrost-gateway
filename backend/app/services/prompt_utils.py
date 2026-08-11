@@ -4,10 +4,11 @@ import json
 from app.schemas.chat import ConversationMessage
 
 def compute_context_hash(messages: list[ConversationMessage]) -> str:
-    serialized = json.dumps(
-        [m.model_dump() for m in messages],
-        sort_keys=True,
+    last_user_message = next(
+        (m for m in reversed(messages) if m.role == "user"),
+        messages[-1],
     )
+    serialized = json.dumps(last_user_message.model_dump(), sort_keys=True)
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
