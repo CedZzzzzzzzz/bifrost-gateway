@@ -9,6 +9,7 @@ export function ResponseCard({ response }) {
       provider={response.provider}
       tokensSaved={response.tokens_saved}
       contextHash={response.context_hash}
+      webSearchUsed={response.web_search_used}
     />
   )
 }

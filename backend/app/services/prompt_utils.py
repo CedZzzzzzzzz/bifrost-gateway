@@ -13,4 +13,6 @@ def compute_context_hash(messages: list[ConversationMessage]) -> str:
 
 
 def flatten_messages_text(messages: list[ConversationMessage]) -> str:
-    return "\n".join(f"[{m.role.upper()}] {m.content}" for m in messages)
+    return "\n".join(
+        f"[{m['role'].upper()}] {m['content']}" for m in messages
+    )

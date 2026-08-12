@@ -14,9 +14,9 @@ def get_groq_client() -> AsyncGroq:
         groq_client = AsyncGroq(api_key=GROQ_API_KEY)
     return groq_client
 
-async def query_groq_llama(messages: list[ConversationMessage]) -> str:
+async def query_groq_llama(messages: list[dict]) -> str:
     chat_completion = await get_groq_client().chat.completions.create(
         model=GROQ_MODEL,
-        messages=[{"role": m.role, "content": m.content} for m in messages],
+        messages=messages,
     )
     return chat_completion.choices[0].message.content

@@ -4,7 +4,6 @@ from google import genai
 from google.genai import types as genai_types
 
 from app.core.config import GEMINI_API_KEY, GEMINI_MODEL
-from app.schemas.chat import ConversationMessage
 
 
 gemini_client: genai.Client | None = None
@@ -17,8 +16,10 @@ def get_gemini_client() -> genai.Client:
         gemini_client = genai.Client(api_key=GEMINI_API_KEY)
     return gemini_client
 
-async def query_gemini_flash(messages: list[ConversationMessage]) -> str:
-    combined_prompt = "\n".join(f"[{m.role.upper()}] {m.content}" for m in messages)
+async def query_gemini_flash(messages: list[dict]) -> str:
+    combined_prompt = "\n".join(
+        f"[{m['role'].upper()}] {m['content']}" for m in messages
+    )
 
     loop = asyncio.get_running_loop()
 

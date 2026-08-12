@@ -14,7 +14,7 @@ function App() {
       {/* Header */}
       <div className="w-full max-w-2xl flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">⚡ Bifrost Gateway</h1>
+          <h1 className="text-2xl font-bold text-white">Bifrost Gateway</h1>
           <p className="text-zinc-500 text-sm">AI Proxy & Token Optimization Middleware</p>
         </div>
         <button
