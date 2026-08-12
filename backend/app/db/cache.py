@@ -8,6 +8,7 @@ from app.core.config import (
     SQLITE_DB_PATH,
     SUPABASE_URL,
     SUPABASE_SERVICE_ROLE_KEY,
+    SEMANTIC_SIMILARITY_THRESHOLD,
 )
 
 supabase_client: Client | None = None
@@ -50,11 +51,17 @@ async def read_cached_response(context_hash: str) -> str | None:
 
     return await loop.run_in_executor(None, sqlite_read, context_hash)
 
-async def write_cached_response(context_hash: str, prompt: str, response: str) -> None:
+async def read_semantic_cached_response(query_embedding: list[float]) -> tuple[str, float] | None:
+    if not SUPABASE_MODE:
+        return None
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, supabase_semantic_read, query_embedding)
+
+async def write_cached_response(context_hash: str, prompt: str, response: str, embedding: list[float] | None = None) -> None:
     loop = asyncio.get_event_loop()
 
     if SUPABASE_MODE:
-        await loop.run_in_executor(None, supabase_write, context_hash, prompt, response)
+        await loop.run_in_executor(None, supabase_write, context_hash, prompt, response, embedding)
     else:
         await loop.run_in_executor(None, sqlite_write, context_hash, prompt, response)
 
@@ -69,15 +76,32 @@ def supabase_read(context_hash: str) -> str | None:
     )
     return result.data[0]["response"] if result.data else None
 
-def supabase_write(context_hash: str, prompt: str, response: str) -> None:
-    supabase_client.table(PROMPT_CACHE_TABLE).upsert(
+def supabase_semantic_read(query_embedding: list[float]) -> tuple[str, float] | None:
+    result = supabase_client.rpc(
+        "match_prompt_cache",
         {
-            "context_hash": context_hash,
-            "prompt": prompt,
-            "response": response
+            "query_embedding": query_embedding,
+            "similarity_threshold": SEMANTIC_SIMILARITY_THRESHOLD,
+            "match_count": 1,
         },
+    ).execute()
+    if result.data:
+        row = result.data[0]
+        return row["response"], row["similarity"]
+    return None
+
+def supabase_write(context_hash: str, prompt: str, response: str, embedding: list[float] | None) -> None:
+    row = {
+        "context_hash": context_hash,
+        "prompt": prompt,
+        "response": response,
+    }
+    if embedding is not None:
+        row["embedding"] = embedding
+
+    supabase_client.table(PROMPT_CACHE_TABLE).upsert(
+        row,
         on_conflict="context_hash",
-        ignore_duplicates=True,
     ).execute()
 
 def sqlite_read(context_hash: str) -> str | None:
