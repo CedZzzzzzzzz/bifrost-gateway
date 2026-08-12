@@ -1,4 +1,4 @@
-export function MetaBadge({ source, provider, tokensSaved, contextHash, webSearchUsed }) {
+export function MetaBadge({ source, provider, tokensSaved, contextHash, webSearchUsed, semanticCacheHit, similarityScore }) {
   return (
     <div className={`flex flex-col gap-2 p-3 rounded-lg border font-mono text-xs ${
       tokensSaved
@@ -14,8 +14,14 @@ export function MetaBadge({ source, provider, tokensSaved, contextHash, webSearc
         </span>
 
         {webSearchUsed && (
-          <span className= "px-3 py-0.5 rounded-full text-slate-900 font-bold bg-yellow-400"> 
+          <span className= "px-3 py-0.5 rounded-full text-slate-900 font-bold bg-indigo-400"> 
             Web Search
+          </span>
+        )}
+
+        {semanticCacheHit && similarityScore && (
+          <span className = "text-green-400">
+            {(similarityScore * 100).toFixed(2)}% Similarity
           </span>
         )}
 

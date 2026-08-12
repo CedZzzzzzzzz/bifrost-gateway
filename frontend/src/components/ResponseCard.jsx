@@ -10,6 +10,8 @@ export function ResponseCard({ response }) {
       tokensSaved={response.tokens_saved}
       contextHash={response.context_hash}
       webSearchUsed={response.web_search_used}
+      semanticCacheHit={response.semantic_cache_hit}
+      similarityScore={response.similarity_score}
     />
   )
 }
