@@ -67,20 +67,22 @@ async def chat_completion(
 
     last_user_message = extract_last_user_message(request)
     query_embedding = await generate_embedding(last_user_message)
-    semantic_result = await read_semantic_cached_response(query_embedding)
+    needs_search = await web_search(last_user_message)
 
-    if semantic_result is not None:
-        semantic_response, similarity_score = semantic_result
-        return JSONResponse(content={
-            "response": semantic_response,
-            "source": "Semantic cache hit",
-            "tokens_saved": True,
-            "provider": None,
-            "web_search_used": False,
-            "semantic_cache_hit": True,
-            "similarity_score": round(similarity_score, 3),
-            "context_hash": context_hash,
-        })
+    if not needs_search:
+        semantic_result = await read_semantic_cached_response(query_embedding)
+        if semantic_result is not None:
+            semantic_response, similarity_score = semantic_result
+            return JSONResponse(content={
+                "response": semantic_response,
+                "source": "Semantic cache hit",
+                "tokens_saved": True,
+                "provider": None,
+                "web_search_used": False,
+                "semantic_cache_hit": True,
+                "similarity_score": round(similarity_score, 3),
+                "context_hash": context_hash,
+            })
 
     web_search_used = False
     messages_to_send = [
@@ -88,9 +90,8 @@ async def chat_completion(
         for m in request.messages
     ]
 
-    if web_search(last_user_message):
+    if needs_search:
         search_context = await fetch_search_context(last_user_message)
-
         if search_context:
             web_search_used = True
             messages_to_send = build_search_enriched_messages(

@@ -1,21 +1,13 @@
 import httpx
 
 from app.core.config import TAVILY_API_KEY
+from app.services.classifier import requires_web_search
 
 TAVILY_API_URL = "https://api.tavily.com/search"
 
-CURRENT_INFO_KEYWORDS = [
-    "current", "latest", "today", "now", "recent",
-    "2024", "2025", "2026", "who is", "price",
-    "news", "update", "right now", "happening",
-    "score", "weather", "stock", "election",
-    "info about", "tell me about", "what is happening",
-    "pax silica", "any info", "give me info",
-]
 
-def web_search(user_message: str) -> bool:
-    message_lower = user_message.lower()
-    return any(keyword in message_lower for keyword in CURRENT_INFO_KEYWORDS)
+async def web_search(user_message: str) -> bool:
+    return await requires_web_search(user_message)
 
 async def fetch_search_context(query: str) -> str:
     payload = {
@@ -41,9 +33,9 @@ async def fetch_search_context(query: str) -> str:
     if tavily_answer:
         context_lines.append(f"Summary: {tavily_answer}")
 
-        for result in results:
-            context_lines.append(
-                f"Source: {result.get('url', '')}\n{result.get('content', '')}"
-            )
+    for result in results:
+        context_lines.append(
+            f"Source: {result.get('url', '')}\n{result.get('content', '')}"
+        )
 
-        return "\n\n".join(context_lines)
+    return "\n\n".join(context_lines)

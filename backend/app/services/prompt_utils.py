@@ -12,7 +12,11 @@ def compute_context_hash(messages: list[ConversationMessage]) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-def flatten_messages_text(messages: list[ConversationMessage]) -> str:
-    return "\n".join(
-        f"[{m['role'].upper()}] {m['content']}" for m in messages
-    )
+def flatten_messages_text(messages) -> str:
+    result = []
+    for m in messages:
+        if isinstance(m, dict):
+            result.append(f"[{m['role'].upper()}] {m['content']}")
+        else:
+            result.append(f"[{m.role.upper()}] {m.content}")
+    return "\n".join(result)
