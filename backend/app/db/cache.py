@@ -128,3 +128,125 @@ def sqlite_write(context_hash: str, prompt: str, response: str) -> None:
             (context_hash, prompt, response),
         )
         conn.commit()
+
+def supabase_fetch_all(page: int, page_size: int) -> list[dict]:
+    offset = (page - 1) * page_size
+    result = (
+        supabase_client.table(PROMPT_CACHE_TABLE)
+        .select("context_hash, prompt, created_at, embedding")
+        .order("created_at", desc=True)
+        .range(offset, offset + page_size - 1)
+        .execute()
+    )
+    return [
+        {
+            "context_hash": row["context_hash"],
+            "prompt": row["prompt"],
+            "created_at": row["created_at"],
+            "has_embedding": row["embedding"] is not None,
+        }
+        for row in result.data
+    ]
+
+def supabase_delete_one(context_hash: str) -> bool:
+    result = (
+        supabase_client.table(PROMPT_CACHE_TABLE)
+        .delete()
+        .eq("context_hash", context_hash)
+        .execute()
+    )
+    return len(result.data) > 0
+
+
+def supabase_delete_all() -> int:
+    result = (
+        supabase_client.table(PROMPT_CACHE_TABLE)
+        .delete()
+        .neq("context_hash", "")
+        .execute()
+    )
+    return len(result.data)
+
+
+def supabase_fetch_stats() -> dict:
+    total_result = (
+        supabase_client.table(PROMPT_CACHE_TABLE)
+        .select("context_hash", count="exact")
+        .execute()
+    )
+    embedding_result = (
+        supabase_client.table(PROMPT_CACHE_TABLE)
+        .select("context_hash", count="exact")
+        .not_.is_("embedding", "null")
+        .execute()
+    )
+    return {
+        "total_entries": total_result.count or 0,
+        "entries_with_embeddings": embedding_result.count or 0,
+    }
+
+def sqlite_fetch_all(page: int, page_size: int) -> list[dict]:
+    offset = (page - 1) * page_size
+    with sqlite3.connect(SQLITE_DB_PATH) as conn:
+        rows = conn.execute(
+            f"""
+            SELECT context_hash, prompt, created_at
+            FROM {PROMPT_CACHE_TABLE}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (page_size, offset),
+        ).fetchall()
+    return [
+        {
+            "context_hash": row[0],
+            "prompt": row[1],
+            "created_at": row[2],
+            "has_embedding": False,
+        }
+        for row in rows
+    ]
+
+
+def sqlite_delete_one(context_hash: str) -> bool:
+    with sqlite3.connect(SQLITE_DB_PATH) as conn:
+        cursor = conn.execute(
+            f"DELETE FROM {PROMPT_CACHE_TABLE} WHERE context_hash = ?",
+            (context_hash,),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def sqlite_delete_all() -> int:
+    with sqlite3.connect(SQLITE_DB_PATH) as conn:
+        cursor = conn.execute(f"DELETE FROM {PROMPT_CACHE_TABLE}")
+        conn.commit()
+        return cursor.rowcount
+
+async def fetch_cache_entries(page: int = 1, page_size: int = 20) -> list[dict]:
+    loop = asyncio.get_event_loop()
+    if SUPABASE_MODE:
+        return await loop.run_in_executor(None, supabase_fetch_all, page, page_size)
+    return await loop.run_in_executor(None, sqlite_fetch_all, page, page_size)
+
+async def delete_cache_entry(context_hash: str) -> bool:
+    loop = asyncio.get_event_loop()
+    if SUPABASE_MODE:
+        return await loop.run_in_executor(None, supabase_delete_one, context_hash)
+    return await loop.run_in_executor(None, sqlite_delete_one, context_hash)
+
+
+async def delete_all_cache_entries() -> int:
+    loop = asyncio.get_event_loop()
+    if SUPABASE_MODE:
+        return await loop.run_in_executor(None, supabase_delete_all)
+    return await loop.run_in_executor(None, sqlite_delete_all)
+
+
+async def fetch_cache_stats() -> dict:
+    loop = asyncio.get_event_loop()
+    if SUPABASE_MODE:
+        return await loop.run_in_executor(None, supabase_fetch_stats)
+    return {"total_entries": 0, "entries_with_embeddings": 0}
+

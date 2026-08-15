@@ -124,7 +124,7 @@ async def chat_completion(
 
     await write_cached_response(
         context_hash=context_hash, 
-        prompt=flatten_messages_text(messages_to_send), 
+        prompt=flatten_messages_text(request.messages), 
         response=response_text,
         embedding=query_embedding,
     )
