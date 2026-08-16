@@ -51,11 +51,14 @@ async def read_cached_response(context_hash: str) -> str | None:
 
     return await loop.run_in_executor(None, sqlite_read, context_hash)
 
-async def read_semantic_cached_response(query_embedding: list[float]) -> tuple[str, float] | None:
+async def read_semantic_cached_response(query_embedding: list[float], threshold: float | None = None,) -> tuple[str, float] | None:
     if not SUPABASE_MODE:
         return None
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, supabase_semantic_read, query_embedding)
+    effective_threshold = threshold if threshold is not None else SEMANTIC_SIMILARITY_THRESHOLD
+    return await loop.run_in_executor(
+        None, supabase_semantic_read, query_embedding, effective_threshold
+    )
 
 async def write_cached_response(context_hash: str, prompt: str, response: str, embedding: list[float] | None = None) -> None:
     loop = asyncio.get_event_loop()
@@ -76,12 +79,12 @@ def supabase_read(context_hash: str) -> str | None:
     )
     return result.data[0]["response"] if result.data else None
 
-def supabase_semantic_read(query_embedding: list[float]) -> tuple[str, float] | None:
+def supabase_semantic_read(query_embedding: list[float], similarity_threshold: float,) -> tuple[str, float] | None:
     result = supabase_client.rpc(
         "match_prompt_cache",
         {
             "query_embedding": query_embedding,
-            "similarity_threshold": SEMANTIC_SIMILARITY_THRESHOLD,
+            "similarity_threshold": similarity_threshold,
             "match_count": 1,
         },
     ).execute()

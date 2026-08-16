@@ -6,15 +6,15 @@ from app.services.classifier import requires_web_search
 TAVILY_API_URL = "https://api.tavily.com/search"
 
 
-async def web_search(user_message: str) -> bool:
-    return await requires_web_search(user_message)
+async def web_search(conversation: str) -> bool:
+    return await requires_web_search(conversation)
 
 async def fetch_search_context(query: str) -> str:
     payload = {
         "api_key": TAVILY_API_KEY,
         "query": query,
-        "search_depth": "basic",
-        "max_results": 3,
+        "search_depth": "advanced",
+        "max_results": 5,
         "include_answer": True,
     }
 

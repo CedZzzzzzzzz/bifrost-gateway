@@ -25,10 +25,10 @@ async def query_gemini_flash(messages: list[dict]) -> str:
 
     response = await loop.run_in_executor(
         None,
-        lambda: get_gemini_client().responses.create(
+        lambda: get_gemini_client().models.generate_content(
             model=GEMINI_MODEL,
             contents=combined_prompt,
-            config=genai_types.GenerationConfig(
+            config=genai_types.GenerateContentConfig(
                 temperature=0.2,
             ),
         ),

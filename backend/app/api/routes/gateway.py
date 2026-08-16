@@ -9,10 +9,11 @@ from app.core.config import GEMINI_MODEL, GROQ_MODEL
 from app.db.cache import read_cached_response, write_cached_response, read_semantic_cached_response
 from app.schemas.chat import ChatRequest
 from app.services.embedding_provider import generate_embedding
-from app.services.gemini_provider import query_gemini_flash, get_gemini_client
-from app.services.groq_provider import query_groq_llama, get_groq_client
+from app.services.gemini_provider import query_gemini_flash
+from app.services.groq_provider import query_groq_llama
 from app.services.prompt_utils import compute_context_hash, flatten_messages_text
 from app.services.search_provider import fetch_search_context, web_search
+from app.services.classifier import generate_search_query
 
 router = APIRouter()
 
@@ -31,8 +32,18 @@ def build_search_enriched_messages(
         "role": "system",
         "content": (
             "You are a helpful assistant with access to real-time web search results. "
-            "Use the following search context to answer the user's question accurately. "
-            "Always prioritize this context over your training data for current information.\n\n"
+            "Treat the search context below as your only source of truth for this answer. "
+            "Do not reference your training data, prior knowledge, or a 'knowledge cutoff' "
+            "in any way — act as if the search context is the only information you have.\n\n"
+            "If the search context does not fully answer the question, say so explicitly "
+            "rather than filling gaps from memory or assumption.\n\n"
+            "For topics involving ongoing investigations, legal proceedings, accidents, or "
+            "any event where cause or fault has not been officially confirmed: report only "
+            "what the search context explicitly states as confirmed fact. Do not state a cause, "
+            "reason, or attribution of fault unless the search context clearly presents it as "
+            "established (not speculation, allegation, or under-investigation). If the context "
+            "distinguishes confirmed facts from ongoing/unconfirmed claims, preserve that "
+            "distinction in your answer instead of flattening it into a single narrative.\n\n"
             f"Search Context:\n{search_context}"
         ),
     }
@@ -52,7 +63,6 @@ async def chat_completion(
     context_hash = compute_context_hash(request.messages)
     cached_response = await read_cached_response(context_hash)
 
-
     if cached_response is not None:
         return JSONResponse(content={
             "response": cached_response,
@@ -66,36 +76,38 @@ async def chat_completion(
         })
 
     last_user_message = extract_last_user_message(request)
+    recent_conversation = flatten_messages_text(request.messages[-4:])
     query_embedding = await generate_embedding(last_user_message)
-    needs_search = await web_search(last_user_message)
 
-    if not needs_search:
-        semantic_result = await read_semantic_cached_response(query_embedding)
-        if semantic_result is not None:
-            semantic_response, similarity_score = semantic_result
-            return JSONResponse(content={
-                "response": semantic_response,
-                "source": "Semantic cache hit",
-                "tokens_saved": True,
-                "provider": None,
-                "web_search_used": False,
-                "semantic_cache_hit": True,
-                "similarity_score": round(similarity_score, 3),
-                "context_hash": context_hash,
-            })
+    semantic_result = await read_semantic_cached_response(query_embedding)
+    if semantic_result is not None:
+        semantic_response, similarity_score = semantic_result
+        return JSONResponse(content={
+            "response": semantic_response,
+            "source": "Semantic cache hit",
+            "tokens_saved": True,
+            "provider": None,
+            "web_search_used": False,
+            "semantic_cache_hit": True,
+            "similarity_score": round(similarity_score, 3),
+            "context_hash": context_hash,
+        })
+
+    needs_search = await web_search(recent_conversation)
 
     web_search_used = False
     messages_to_send = [
         {"role": m.role, "content": m.content}
-        for m in request.messages
+        for m in request.messages[-6:]
     ]
 
     if needs_search:
-        search_context = await fetch_search_context(last_user_message)
+        search_query = await generate_search_query(recent_conversation, last_user_message)
+        search_context = await fetch_search_context(search_query)
         if search_context:
             web_search_used = True
             messages_to_send = build_search_enriched_messages(
-                request, 
+                request,
                 search_context
             )
 
@@ -125,7 +137,7 @@ async def chat_completion(
 
     await write_cached_response(
         context_hash=context_hash, 
-        prompt=flatten_messages_text(request.messages), 
+        prompt=last_user_message, 
         response=response_text,
         embedding=query_embedding,
     )
