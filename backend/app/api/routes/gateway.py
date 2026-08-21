@@ -37,6 +37,8 @@ def build_search_enriched_messages(
             "in any way — act as if the search context is the only information you have.\n\n"
             "If the search context does not fully answer the question, say so explicitly "
             "rather than filling gaps from memory or assumption.\n\n"
+            "Answer in concise natural paragraphs by default. Do not copy the search "
+            "context's table or list formatting unless the user asks for it.\n\n"
             "For topics involving ongoing investigations, legal proceedings, accidents, or "
             "any event where cause or fault has not been officially confirmed: report only "
             "what the search context explicitly states as confirmed fact. Do not state a cause, "
@@ -60,8 +62,15 @@ async def chat_completion(
 ) -> JSONResponse:
     # Bifrost chat completion endpoint, main gateway. it applies the sha-256 algorithm prompt caching.
 
+    last_user_message = extract_last_user_message(request)
+    recent_conversation = flatten_messages_text(request.messages[-4:])
+    needs_search = await web_search(recent_conversation)
+
     context_hash = compute_context_hash(request.messages)
-    cached_response = await read_cached_response(context_hash)
+    cached_response = await read_cached_response(
+        context_hash,
+        max_age_seconds=86400 if needs_search else None,
+    )
 
     if cached_response is not None:
         return JSONResponse(content={
@@ -75,25 +84,22 @@ async def chat_completion(
             "context_hash": context_hash,
         })
 
-    last_user_message = extract_last_user_message(request)
-    recent_conversation = flatten_messages_text(request.messages[-4:])
     query_embedding = await generate_embedding(last_user_message)
 
-    semantic_result = await read_semantic_cached_response(query_embedding)
-    if semantic_result is not None:
-        semantic_response, similarity_score = semantic_result
-        return JSONResponse(content={
-            "response": semantic_response,
-            "source": "Semantic cache hit",
-            "tokens_saved": True,
-            "provider": None,
-            "web_search_used": False,
-            "semantic_cache_hit": True,
-            "similarity_score": round(similarity_score, 3),
-            "context_hash": context_hash,
-        })
-
-    needs_search = await web_search(recent_conversation)
+    if not needs_search:
+        semantic_result = await read_semantic_cached_response(query_embedding)
+        if semantic_result is not None:
+            semantic_response, similarity_score = semantic_result
+            return JSONResponse(content={
+                "response": semantic_response,
+                "source": "Semantic cache hit",
+                "tokens_saved": True,
+                "provider": None,
+                "web_search_used": False,
+                "semantic_cache_hit": True,
+                "similarity_score": round(similarity_score, 3),
+                "context_hash": context_hash,
+            })
 
     web_search_used = False
     messages_to_send = [
