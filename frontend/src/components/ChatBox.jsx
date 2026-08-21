@@ -1,7 +1,16 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
+import { ArrowUp } from "lucide-react"
 
 export function ChatBox({ onSubmit, isLoading }) {
   const [input, setInput] = useState("")
+  const textareaRef = useRef(null)
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`
+    }
+  }, [input])
 
   function handleSubmit() {
     if (!input.trim() || isLoading) return
@@ -17,28 +26,57 @@ export function ChatBox({ onSubmit, isLoading }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <textarea
-        className="w-full p-3 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-100 text-sm resize-none focus:outline-none focus:border-indigo-500 placeholder:text-zinc-500"
-        rows={4}
-        placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={isLoading}
-      />
-
-      <button
-        className={`self-end px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
-          isLoading || !input.trim()
-            ? "bg-zinc-700 text-zinc-500 cursor-not-allowed"
-            : "bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
-        }`}
-        onClick={handleSubmit}
-        disabled={isLoading || !input.trim()}
+    <div
+      className="px-6 py-4"
+      style={{ borderTop: "1px solid var(--border)" }}
+    >
+      <div
+        className="max-w-3xl mx-auto flex items-end gap-3 px-4 py-3 rounded-2xl"
+        style={{
+          backgroundColor: "var(--surface)",
+          border: "1px solid var(--border)",
+        }}
       >
-        {isLoading ? "Thinking..." : "Send"}
-      </button>
+        <textarea
+          ref={textareaRef}
+          rows={1}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+          placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
+          className="flex-1 bg-transparent resize-none text-sm outline-none leading-relaxed"
+          style={{
+            color: "var(--text)",
+            caretColor: "var(--frost)",
+            maxHeight: "160px",
+            fontFamily: "Inter, sans-serif",
+          }}
+        />
+
+        <button
+          onClick={handleSubmit}
+          disabled={isLoading || !input.trim()}
+          className="shrink-0 flex items-center justify-center w-8 h-8 rounded-xl transition-all"
+          style={{
+            backgroundColor:
+              isLoading || !input.trim() ? "var(--border)" : "var(--blue)",
+            color:
+              isLoading || !input.trim() ? "var(--muted)" : "var(--text)",
+            cursor:
+              isLoading || !input.trim() ? "not-allowed" : "pointer",
+          }}
+        >
+          <ArrowUp size={16} />
+        </button>
+      </div>
+
+      <p
+        className="text-center text-xs mt-2"
+        style={{ color: "var(--muted)" }}
+      >
+        Bifrost may return cached responses. Always verify critical information.
+      </p>
     </div>
   )
 }

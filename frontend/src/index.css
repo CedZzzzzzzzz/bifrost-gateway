@@ -1,2 +1,38 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+* {
+  font-family: 'Inter', sans-serif;
+}
+
+code, .mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+:root {
+  --bg: #080d1a;
+  --sidebar: #0e1628;
+  --surface: #111f38;
+  --border: #1a3160;
+  --blue: #3b82f6;
+  --frost: #60a5fa;
+  --emerald: #10b981;
+  --violet: #8b5cf6;
+  --amber: #f59e0b;
+  --muted: #94a3b8;
+  --text: #f1f5f9;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}

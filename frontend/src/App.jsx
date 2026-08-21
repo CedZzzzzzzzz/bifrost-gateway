@@ -1,126 +1,132 @@
 import { useState } from "react"
-import ReactMarkdown from "react-markdown"
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
-import { Analytics } from "./components/Analytics"
-import { CacheTable } from "./components/CacheTable"
+import { Sidebar } from "./components/Sidebar"
+import { ChatArea } from "./components/ChatArea"
 import { ChatBox } from "./components/ChatBox"
-import { ResponseCard } from "./components/ResponseCard"
+import { CacheTable } from "./components/CacheTable"
+import { Analytics } from "./components/Analytics"
 import { useChat } from "./hooks/useChat"
 
-const TABS = ["Chat", "Cache", "Analytics"]
-
-function App() {
+export default function App() {
   const [activeTab, setActiveTab] = useState("Chat")
   const { messages, response, isLoading, error, submitMessage, clearChat } = useChat()
 
+  function handleNewChat() {
+    clearChat()
+    setActiveTab("Chat")
+  }
+
+  function handlePromptSelect(prompt) {
+    submitMessage(prompt)
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center px-4 py-10">
+    <div
+      className="flex h-screen w-screen overflow-hidden"
+      style={{ backgroundColor: "var(--bg)" }}
+    >
+      {/* Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onNewChat={handleNewChat}
+      />
 
-      {/* Header */}
-      <div className="w-full max-w-4xl flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Bifrost Gateway</h1>
-          <p className="text-zinc-500 text-sm">AI Proxy & Token Optimization Middleware</p>
-        </div>
-        {activeTab === "Chat" && (
-          <button
-            onClick={clearChat}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            Clear chat
-          </button>
-        )}
-      </div>
+      {/* Main content — offset by sidebar width */}
+      <div
+        className="flex flex-col flex-1 overflow-hidden"
+        style={{ marginLeft: "56px" }}
+      >
 
-      {/* Tab Navigation */}
-      <div className="w-full max-w-4xl flex gap-1 mb-8 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab
-                ? "bg-indigo-600 text-white"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-6 py-3 shrink-0"
+          style={{
+            borderBottom: "1px solid var(--border)",
+            backgroundColor: "var(--bg)",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--text)" }}
+            >
+              {activeTab === "Chat"
+                ? "Chat"
+                : activeTab === "Cache"
+                ? "Cache Browser"
+                : "Analytics"}
+            </span>
 
-      {/* Chat Tab */}
-      {activeTab === "Chat" && (
-        <>
-          {messages.length > 0 && (
-            <div className="w-full max-w-4xl flex flex-col gap-3 mb-6">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`px-4 py-3 rounded-lg text-sm ${
-                    message.role === "user"
-                      ? "bg-indigo-600 text-white self-end max-w-lg ml-auto"
-                      : "bg-zinc-800 text-zinc-100 self-start w-full prose prose-invert prose-sm max-w-none"
-                  }`}
-                >
-                  {message.role === "user" ? (
-                    message.content
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {index === messages.length - 1 && response && (
-                        <ResponseCard response={response} />
-                      )}
-                      <ReactMarkdown
-                        components={{
-                          code({ node, inline, className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(className || "")
-                            return !inline && match ? (
-                              <SyntaxHighlighter
-                                style={oneDark}
-                                language={match[1]}
-                                PreTag="div"
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, "")}
-                              </SyntaxHighlighter>
-                            ) : (
-                              <code className="bg-zinc-700 px-1 py-0.5 rounded text-xs" {...props}>
-                                {children}
-                              </code>
-                            )
-                          }
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <div className="w-full max-w-4xl mb-4 px-4 py-3 rounded-lg bg-red-950 border border-red-500 text-red-400 text-sm">
-              ⚠️ {error}
-            </div>
-          )}
-
-          <div className="w-full max-w-4xl">
-            <ChatBox onSubmit={submitMessage} isLoading={isLoading} />
+            {activeTab === "Chat" && (
+              <span
+                className="px-2 py-0.5 rounded-full text-xs"
+                style={{
+                  backgroundColor: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--muted)",
+                  fontFamily: "JetBrains Mono, monospace",
+                }}
+              >
+                gpt-oss-120b
+              </span>
+            )}
           </div>
-        </>
-      )}
 
-      {/* Cache Tab */}
-      {activeTab === "Cache" && <CacheTable />}
+          {activeTab === "Chat" && messages.length > 0 && (
+            <button
+              onClick={handleNewChat}
+              className="text-xs transition-colors"
+              style={{ color: "var(--muted)" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted)")}
+            >
+              Clear chat
+            </button>
+          )}
+        </div>
 
-      {/* Analytics Tab */}
-      {activeTab === "Analytics" && <Analytics />}
+        {/* Chat Tab */}
+        {activeTab === "Chat" && (
+          <>
+            <ChatArea
+              messages={messages}
+              response={response}
+              isLoading={isLoading}
+              onPromptSelect={handlePromptSelect}
+            />
 
+            {error && (
+              <div
+                className="mx-6 mb-2 px-4 py-3 rounded-xl text-sm"
+                style={{
+                  backgroundColor: "#1a0a0a",
+                  border: "1px solid #7f1d1d",
+                  color: "#fca5a5",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            <ChatBox onSubmit={submitMessage} isLoading={isLoading} />
+          </>
+        )}
+
+        {/* Cache Tab */}
+        {activeTab === "Cache" && (
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            <CacheTable />
+          </div>
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === "Analytics" && (
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            <Analytics />
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }
-
-export default App
