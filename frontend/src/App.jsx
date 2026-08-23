@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { SideBar } from "./components/SideBar"
+import { Sidebar } from "./components/SideBar"
 import { ChatArea } from "./components/ChatArea"
 import { ChatBox } from "./components/ChatBox"
 import { CacheTable } from "./components/CacheTable"
@@ -42,7 +42,7 @@ export default function App() {
       className="flex h-screen w-screen overflow-hidden"
       style={{ backgroundColor: "var(--bg)" }}
     >
-      <SideBar
+      <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onNewChat={handleNewChat}
