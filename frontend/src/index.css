@@ -10,17 +10,24 @@ code, .mono {
 }
 
 :root {
-  --bg: #080d1a;
-  --sidebar: #0e1628;
-  --surface: #111f38;
-  --border: #1a3160;
-  --blue: #3b82f6;
-  --frost: #60a5fa;
-  --emerald: #10b981;
-  --violet: #8b5cf6;
-  --amber: #f59e0b;
-  --muted: #94a3b8;
-  --text: #f1f5f9;
+  --bg:        #050a14;
+  --sidebar:   #070d1a;
+  --surface:   #0a1628;
+  --surface2:  #0d1f3c;
+  --border:    #112244;
+  --border2:   #1a3366;
+  --blue:      #2d7dd2;
+  --frost:     #56c8e8;
+  --frost2:    #89dff0;
+  --ice:       #c8eef8;
+  --emerald:   #0fa87a;
+  --violet:    #7c6af5;
+  --amber:     #e8a838;
+  --rose:      #e85555;
+  --muted:     #4a6a8a;
+  --muted2:    #6a8aaa;
+  --text:      #d8eef8;
+  --text2:     #f0f8ff;
 }
 
 body {
@@ -28,11 +35,62 @@ body {
   color: var(--text);
 }
 
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* Frost glow effect */
+.frost-glow {
+  box-shadow: 0 0 20px rgba(86, 200, 232, 0.08),
+              0 0 40px rgba(86, 200, 232, 0.04);
+}
 
-@keyframes pulse {
-  0%, 100% { opacity: 0.3; transform: translateY(0); }
-  50% { opacity: 1; transform: translateY(-3px); }
+.frost-border {
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(86, 200, 232, 0.06);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 2px;
+}
+
+.glass {
+  background: rgba(10, 22, 40, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(86, 200, 232, 0.08);
+}
+
+.glass-card {
+  background: rgba(13, 31, 60, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(86, 200, 232, 0.1);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(86, 200, 232, 0.06);
+}
+
+.frost-glow-sm {
+  box-shadow: 0 0 12px rgba(86, 200, 232, 0.12);
+}
+
+.frost-glow {
+  box-shadow: 0 0 24px rgba(86, 200, 232, 0.15),
+              0 0 48px rgba(86, 200, 232, 0.06);
+}
+
+/* Typing animation */
+@keyframes typingPulse {
+  0%, 100% { opacity: 0.2; transform: translateY(0px); }
+  50% { opacity: 1; transform: translateY(-4px); }
+}
+
+/* Fade in animation */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeSlideUp 0.3s ease forwards;
 }

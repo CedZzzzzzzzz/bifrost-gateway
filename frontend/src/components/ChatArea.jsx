@@ -3,7 +3,7 @@ import { MessageBubble } from "./MessageBubble"
 import { TypingIndicator } from "./TypingIndicator"
 import { EmptyState } from "./EmptyState"
 
-export function ChatArea({ messages, response, isLoading, onPromptSelect }) {
+export function ChatArea({ messages, response, isLoading, onPromptSelect, model }) {
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export function ChatArea({ messages, response, isLoading, onPromptSelect }) {
   if (messages.length === 0 && !isLoading) {
     return (
       <div className="flex-1 overflow-y-auto">
-        <EmptyState onPromptSelect={onPromptSelect} />
+        <EmptyState onPromptSelect={onPromptSelect} model={model}/>
       </div>
     )
   }
