@@ -14,6 +14,7 @@ async def fetch_search_context(query: str) -> str:
         "api_key": TAVILY_API_KEY,
         "query": query,
         "search_depth": "advanced",
+        "topic": "news",
         "max_results": 5,
         "include_answer": True,
     }

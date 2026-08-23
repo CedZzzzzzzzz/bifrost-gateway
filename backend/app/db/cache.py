@@ -59,13 +59,21 @@ async def read_cached_response(
         None, sqlite_read, context_hash, max_age_seconds
     )
 
-async def read_semantic_cached_response(query_embedding: list[float], threshold: float | None = None,) -> tuple[str, float] | None:
+async def read_semantic_cached_response(
+    query_embedding: list[float],
+    threshold: float | None = None,
+    max_age_seconds: int | None = None,
+) -> tuple[str, float] | None:
     if not SUPABASE_MODE:
         return None
     loop = asyncio.get_event_loop()
     effective_threshold = threshold if threshold is not None else SEMANTIC_SIMILARITY_THRESHOLD
     return await loop.run_in_executor(
-        None, supabase_semantic_read, query_embedding, effective_threshold
+        None,
+        supabase_semantic_read,
+        query_embedding,
+        effective_threshold,
+        max_age_seconds,
     )
 
 async def write_cached_response(context_hash: str, prompt: str, response: str, embedding: list[float] | None = None) -> None:
@@ -91,13 +99,18 @@ def supabase_read(
     result = query.limit(1).execute()
     return result.data[0]["response"] if result.data else None
 
-def supabase_semantic_read(query_embedding: list[float], similarity_threshold: float,) -> tuple[str, float] | None:
+def supabase_semantic_read(
+    query_embedding: list[float],
+    similarity_threshold: float,
+    max_age_seconds: int | None = None,
+) -> tuple[str, float] | None:
     result = supabase_client.rpc(
         "match_prompt_cache",
         {
             "query_embedding": query_embedding,
             "similarity_threshold": similarity_threshold,
             "match_count": 1,
+            "max_age_seconds": max_age_seconds,
         },
     ).execute()
     if result.data:
@@ -110,6 +123,7 @@ def supabase_write(context_hash: str, prompt: str, response: str, embedding: lis
         "context_hash": context_hash,
         "prompt": prompt,
         "response": response,
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     if embedding is not None:
         row["embedding"] = embedding
@@ -151,7 +165,8 @@ def sqlite_write(context_hash: str, prompt: str, response: str) -> None:
             VALUES (?, ?, ?)
             ON CONFLICT(context_hash) DO UPDATE SET
                 prompt=excluded.prompt,
-                response=excluded.response
+                response=excluded.response,
+                created_at=CURRENT_TIMESTAMP
             """,
             (context_hash, prompt, response),
         )

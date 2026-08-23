@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from google.genai import types as genai_types
 from groq import RateLimitError as GroqRateLimitError
 
-import asyncio
-
-from app.core.config import GEMINI_MODEL, GROQ_MODEL
+from app.core.config import (
+    CURRENT_INFO_CACHE_MAX_AGE_SECONDS,
+    SEMANTIC_CURRENT_SIMILARITY_THRESHOLD,
+    SEMANTIC_SIMILARITY_THRESHOLD,
+)
 from app.db.cache import read_cached_response, write_cached_response, read_semantic_cached_response
 from app.schemas.chat import ChatRequest
 from app.services.embedding_provider import generate_embedding
@@ -69,7 +70,9 @@ async def chat_completion(
     context_hash = compute_context_hash(request.messages)
     cached_response = await read_cached_response(
         context_hash,
-        max_age_seconds=86400 if needs_search else None,
+        max_age_seconds=(
+            CURRENT_INFO_CACHE_MAX_AGE_SECONDS if needs_search else None
+        ),
     )
 
     if cached_response is not None:
@@ -86,20 +89,35 @@ async def chat_completion(
 
     query_embedding = await generate_embedding(last_user_message)
 
-    if not needs_search:
-        semantic_result = await read_semantic_cached_response(query_embedding)
-        if semantic_result is not None:
-            semantic_response, similarity_score = semantic_result
-            return JSONResponse(content={
-                "response": semantic_response,
-                "source": "Semantic cache hit",
-                "tokens_saved": True,
-                "provider": None,
-                "web_search_used": False,
-                "semantic_cache_hit": True,
-                "similarity_score": round(similarity_score, 3),
-                "context_hash": context_hash,
-            })
+    semantic_result = await read_semantic_cached_response(
+        query_embedding,
+        threshold=(
+            SEMANTIC_CURRENT_SIMILARITY_THRESHOLD
+            if needs_search
+            else SEMANTIC_SIMILARITY_THRESHOLD
+        ),
+        max_age_seconds=(
+            CURRENT_INFO_CACHE_MAX_AGE_SECONDS if needs_search else None
+        ),
+    )
+    if semantic_result is not None:
+        semantic_response, similarity_score = semantic_result
+        await write_cached_response(
+            context_hash=context_hash,
+            prompt=last_user_message,
+            response=semantic_response,
+            embedding=query_embedding,
+        )
+        return JSONResponse(content={
+            "response": semantic_response,
+            "source": "Semantic cache hit",
+            "tokens_saved": True,
+            "provider": None,
+            "web_search_used": False,
+            "semantic_cache_hit": True,
+            "similarity_score": round(similarity_score, 3),
+            "context_hash": context_hash,
+        })
 
     web_search_used = False
     messages_to_send = [
@@ -108,7 +126,9 @@ async def chat_completion(
     ]
 
     if needs_search:
-        search_query = await generate_search_query(recent_conversation, last_user_message)
+        search_query = await generate_search_query(
+            recent_conversation, last_user_message
+        )
         search_context = await fetch_search_context(search_query)
         if search_context:
             web_search_used = True
