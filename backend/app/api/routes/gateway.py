@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from google.genai import types as genai_types
 from groq import RateLimitError as GroqRateLimitError
 
-import asyncio
-
-from app.core.config import GEMINI_MODEL, GROQ_MODEL
+from app.core.config import (
+    CURRENT_INFO_CACHE_MAX_AGE_SECONDS,
+    SEMANTIC_CURRENT_SIMILARITY_THRESHOLD,
+    SEMANTIC_SIMILARITY_THRESHOLD,
+)
 from app.db.cache import read_cached_response, write_cached_response, read_semantic_cached_response
 from app.schemas.chat import ChatRequest
 from app.services.embedding_provider import generate_embedding
@@ -37,6 +38,8 @@ def build_search_enriched_messages(
             "in any way — act as if the search context is the only information you have.\n\n"
             "If the search context does not fully answer the question, say so explicitly "
             "rather than filling gaps from memory or assumption.\n\n"
+            "Answer in concise natural paragraphs by default. Do not copy the search "
+            "context's table or list formatting unless the user asks for it.\n\n"
             "For topics involving ongoing investigations, legal proceedings, accidents, or "
             "any event where cause or fault has not been officially confirmed: report only "
             "what the search context explicitly states as confirmed fact. Do not state a cause, "
@@ -60,8 +63,17 @@ async def chat_completion(
 ) -> JSONResponse:
     # Bifrost chat completion endpoint, main gateway. it applies the sha-256 algorithm prompt caching.
 
+    last_user_message = extract_last_user_message(request)
+    recent_conversation = flatten_messages_text(request.messages[-4:])
+    needs_search = await web_search(recent_conversation)
+
     context_hash = compute_context_hash(request.messages)
-    cached_response = await read_cached_response(context_hash)
+    cached_response = await read_cached_response(
+        context_hash,
+        max_age_seconds=(
+            CURRENT_INFO_CACHE_MAX_AGE_SECONDS if needs_search else None
+        ),
+    )
 
     if cached_response is not None:
         return JSONResponse(content={
@@ -75,13 +87,27 @@ async def chat_completion(
             "context_hash": context_hash,
         })
 
-    last_user_message = extract_last_user_message(request)
-    recent_conversation = flatten_messages_text(request.messages[-4:])
     query_embedding = await generate_embedding(last_user_message)
 
-    semantic_result = await read_semantic_cached_response(query_embedding)
+    semantic_result = await read_semantic_cached_response(
+        query_embedding,
+        threshold=(
+            SEMANTIC_CURRENT_SIMILARITY_THRESHOLD
+            if needs_search
+            else SEMANTIC_SIMILARITY_THRESHOLD
+        ),
+        max_age_seconds=(
+            CURRENT_INFO_CACHE_MAX_AGE_SECONDS if needs_search else None
+        ),
+    )
     if semantic_result is not None:
         semantic_response, similarity_score = semantic_result
+        await write_cached_response(
+            context_hash=context_hash,
+            prompt=last_user_message,
+            response=semantic_response,
+            embedding=query_embedding,
+        )
         return JSONResponse(content={
             "response": semantic_response,
             "source": "Semantic cache hit",
@@ -93,8 +119,6 @@ async def chat_completion(
             "context_hash": context_hash,
         })
 
-    needs_search = await web_search(recent_conversation)
-
     web_search_used = False
     messages_to_send = [
         {"role": m.role, "content": m.content}
@@ -102,7 +126,9 @@ async def chat_completion(
     ]
 
     if needs_search:
-        search_query = await generate_search_query(recent_conversation, last_user_message)
+        search_query = await generate_search_query(
+            recent_conversation, last_user_message
+        )
         search_context = await fetch_search_context(search_query)
         if search_context:
             web_search_used = True

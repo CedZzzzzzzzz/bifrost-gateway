@@ -1,5 +1,6 @@
 import asyncio
 import sqlite3
+from datetime import datetime, timedelta, timezone
 
 from supabase import create_client, Client
 
@@ -43,21 +44,36 @@ def init_sqlite_db() -> None:
 
 
 
-async def read_cached_response(context_hash: str) -> str | None:
+async def read_cached_response(
+    context_hash: str,
+    max_age_seconds: int | None = None,
+) -> str | None:
     loop = asyncio.get_event_loop()
 
     if SUPABASE_MODE:
-        return await loop.run_in_executor(None, supabase_read, context_hash)
+        return await loop.run_in_executor(
+            None, supabase_read, context_hash, max_age_seconds
+        )
 
-    return await loop.run_in_executor(None, sqlite_read, context_hash)
+    return await loop.run_in_executor(
+        None, sqlite_read, context_hash, max_age_seconds
+    )
 
-async def read_semantic_cached_response(query_embedding: list[float], threshold: float | None = None,) -> tuple[str, float] | None:
+async def read_semantic_cached_response(
+    query_embedding: list[float],
+    threshold: float | None = None,
+    max_age_seconds: int | None = None,
+) -> tuple[str, float] | None:
     if not SUPABASE_MODE:
         return None
     loop = asyncio.get_event_loop()
     effective_threshold = threshold if threshold is not None else SEMANTIC_SIMILARITY_THRESHOLD
     return await loop.run_in_executor(
-        None, supabase_semantic_read, query_embedding, effective_threshold
+        None,
+        supabase_semantic_read,
+        query_embedding,
+        effective_threshold,
+        max_age_seconds,
     )
 
 async def write_cached_response(context_hash: str, prompt: str, response: str, embedding: list[float] | None = None) -> None:
@@ -68,24 +84,33 @@ async def write_cached_response(context_hash: str, prompt: str, response: str, e
     else:
         await loop.run_in_executor(None, sqlite_write, context_hash, prompt, response)
 
-def supabase_read(context_hash: str) -> str | None:
-
-    result = (
+def supabase_read(
+    context_hash: str,
+    max_age_seconds: int | None = None,
+) -> str | None:
+    query = (
         supabase_client.table(PROMPT_CACHE_TABLE)
-        .select("response")
+        .select("response, created_at")
         .eq("context_hash", context_hash)
-        .limit(1)
-        .execute()
     )
+    if max_age_seconds is not None:
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=max_age_seconds)
+        query = query.gt("created_at", cutoff.isoformat())
+    result = query.limit(1).execute()
     return result.data[0]["response"] if result.data else None
 
-def supabase_semantic_read(query_embedding: list[float], similarity_threshold: float,) -> tuple[str, float] | None:
+def supabase_semantic_read(
+    query_embedding: list[float],
+    similarity_threshold: float,
+    max_age_seconds: int | None = None,
+) -> tuple[str, float] | None:
     result = supabase_client.rpc(
         "match_prompt_cache",
         {
             "query_embedding": query_embedding,
             "similarity_threshold": similarity_threshold,
             "match_count": 1,
+            "max_age_seconds": max_age_seconds,
         },
     ).execute()
     if result.data:
@@ -98,6 +123,7 @@ def supabase_write(context_hash: str, prompt: str, response: str, embedding: lis
         "context_hash": context_hash,
         "prompt": prompt,
         "response": response,
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     if embedding is not None:
         row["embedding"] = embedding
@@ -107,13 +133,26 @@ def supabase_write(context_hash: str, prompt: str, response: str, embedding: lis
         on_conflict="context_hash",
     ).execute()
 
-def sqlite_read(context_hash: str) -> str | None:
+def sqlite_read(
+    context_hash: str,
+    max_age_seconds: int | None = None,
+) -> str | None:
     with sqlite3.connect(SQLITE_DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            f"SELECT response FROM {PROMPT_CACHE_TABLE} WHERE context_hash = ?",
-            (context_hash,),
-        )
+        if max_age_seconds is None:
+            cursor.execute(
+                f"SELECT response FROM {PROMPT_CACHE_TABLE} WHERE context_hash = ?",
+                (context_hash,),
+            )
+        else:
+            cursor.execute(
+                f"""
+                SELECT response FROM {PROMPT_CACHE_TABLE}
+                WHERE context_hash = ?
+                  AND created_at > datetime('now', ?)
+                """,
+                (context_hash, f"-{max_age_seconds} seconds"),
+            )
         row = cursor.fetchone()
         return row[0] if row else None
 
@@ -126,7 +165,8 @@ def sqlite_write(context_hash: str, prompt: str, response: str) -> None:
             VALUES (?, ?, ?)
             ON CONFLICT(context_hash) DO UPDATE SET
                 prompt=excluded.prompt,
-                response=excluded.response
+                response=excluded.response,
+                created_at=CURRENT_TIMESTAMP
             """,
             (context_hash, prompt, response),
         )
