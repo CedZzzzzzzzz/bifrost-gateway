@@ -15,3 +15,5 @@ services:
         sync: false
       - key: VERCEL_FRONTEND_URL
         sync: false
+      - key: VERCEL_SUBDOMAIN
+        sync: false
