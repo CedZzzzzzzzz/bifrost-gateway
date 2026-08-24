@@ -7,9 +7,11 @@ const AUTH_HEADER = {
   "Authorization": `Bearer ${BIFROST_API_KEY}`,
 }
 
+const BASE_URL = LOCAL_API_BASE_URL || API_BASE_URL
+
 export async function sendChatMessage(messages) {
   try {
-    const response = await fetch(`${LOCAL_API_BASE_URL}/api/v1/chat/completions`, {
+    const response = await fetch(`${BASE_URL}/api/v1/chat/completions`, {
       method: "POST",
       headers: AUTH_HEADER,
       body: JSON.stringify({ messages }),
@@ -22,7 +24,7 @@ export async function sendChatMessage(messages) {
 
     return response.json();
   } catch {
-    const response = await fetch(`${API_BASE_URL}/api/v1/chat/completions`, {
+    const response = await fetch(`${BASE_URL}/api/v1/chat/completions`, {
       method: "POST",
       headers: AUTH_HEADER,
       body: JSON.stringify({ messages }),
