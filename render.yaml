@@ -13,7 +13,7 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: VERCEL_FRONTEND_URL
+      - key: VERCEL_URL
         sync: false
       - key: VERCEL_SUBDOMAIN
         sync: false
