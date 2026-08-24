@@ -8,7 +8,7 @@ const BOTTOM_NAV = [
   { id: "Analytics", icon: BarChart2, label: "Analytics" },
 ]
 
-export function Sidebar({ activeTab, onTabChange, onNewChat }) {
+export function SideBar({ activeTab, onTabChange, onNewChat }) {
   const [hovered, setHovered] = useState(false)
 
   return (

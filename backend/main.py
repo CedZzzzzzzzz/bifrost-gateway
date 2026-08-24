@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
-from app.core.config import VERCEL_FRONTEND_URL, BIFROST_API_KEY
+from app.core.config import VERCEL_FRONTEND_URL, VERCEL_SUBDOMAIN, BIFROST_API_KEY
 from app.core.lifespan import lifespan
 
 
@@ -20,6 +20,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         VERCEL_FRONTEND_URL,
+        VERCEL_SUBDOMAIN,
     ],
     allow_origin_regex = r"^https://.*\.vercel\.app$",
     allow_credentials = True,
