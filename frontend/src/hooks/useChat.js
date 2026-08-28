@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { sendChatMessage } from "../api/gateway"
 
-export function useChat() {
+export function useChat(conversationId) {
   const [messages, setMessages] = useState([])
   const [response, setResponse] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -19,7 +19,7 @@ export function useChat() {
     setResponse(null)
 
     try {
-      const result = await sendChatMessage(updatedMessages)
+      const result = await sendChatMessage(updatedMessages, conversationId)
       setResponse(result)
       setMessages([
         ...updatedMessages,
@@ -38,6 +38,12 @@ export function useChat() {
     setError(null)
   }
 
+  function loadMessages(historicalMessages) {
+    setMessages(historicalMessages) 
+    setResponse(null)
+    setError(null)
+  }
+
   return {
     messages,
     response,
@@ -45,5 +51,6 @@ export function useChat() {
     error,
     submitMessage,
     clearChat,
+    loadMessages,
   }
 }

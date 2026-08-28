@@ -1,14 +1,20 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { MessageSquare, Database, BarChart2, Plus, Zap } from "lucide-react"
-
-const API_BASE_URL = import.meta.env.VITE_LOCAL_API_BASE_URL || import.meta.env.VITE_API_BASE_URL
+import { ConversationList } from "./ConversationList"
 
 const BOTTOM_NAV = [
   { id: "Cache", icon: Database, label: "Cache" },
   { id: "Analytics", icon: BarChart2, label: "Analytics" },
 ]
 
-export function SideBar({ activeTab, onTabChange, onNewChat }) {
+export function SideBar({
+  activeTab,
+  onTabChange,
+  onNewChat,
+  conversations,
+  activeConversationId,
+  onConversationSelect,
+}) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -91,6 +97,12 @@ export function SideBar({ activeTab, onTabChange, onNewChat }) {
           hovered={hovered}
           onClick={() => onTabChange("Chat")}
         />
+        <ConversationList
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelect={onConversationSelect}
+          isVisible={hovered}
+        />
       </div>
 
       {/* Bottom Nav */}
@@ -114,7 +126,7 @@ export function SideBar({ activeTab, onTabChange, onNewChat }) {
   )
 }
 
-function NavItem({ id, icon: Icon, label, isActive, hovered, onClick }) {
+function NavItem({ icon: Icon, label, isActive, hovered, onClick }) {
   return (
     <button
       onClick={onClick}

@@ -5,19 +5,39 @@ import { ChatBox } from "./components/ChatBox"
 import { CacheTable } from "./components/CacheTable"
 import { Analytics } from "./components/Analytics"
 import { useChat } from "./hooks/useChat"
+import { useConversation } from "./hooks/useConversation"
 
 const API_BASE_URL = import.meta.env.VITE_LOCAL_API_BASE_URL || import.meta.env.VITE_API_BASE_URL
-const BIFROST_API_KEY = import.meta.env.VITE_BIFROST_API_KEY
-
-const AUTH_HEADER = {
-  "Content-Type": "application/json",
-  "Authorization": `Bearer ${BIFROST_API_KEY}`,
-}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("Chat")
   const [model, setModel] = useState(null)
-  const { messages, response, isLoading, error, submitMessage, clearChat } = useChat()
+  const {
+    conversations,
+    activeConversationId,
+    setActiveConversationId,
+    createNewConversation,
+    loadConversationMessages,
+    updateConversationTitle,
+  } = useConversation()
+  const { messages, response, isLoading, error, submitMessage, clearChat, loadMessages } = useChat(
+    activeConversationId
+  )
+
+  useEffect(() => {
+    if (!activeConversationId && conversations.length > 0) {
+      setActiveConversationId(conversations[0].id)
+    }
+  }, [activeConversationId, conversations, setActiveConversationId])
+
+  useEffect(() => {
+    if (!activeConversationId) {
+      loadMessages([])
+      return
+    }
+
+    loadConversationMessages(activeConversationId).then(loadMessages)
+  }, [activeConversationId])
 
   useEffect(() => {
     async function fetchHealth() {
@@ -26,15 +46,40 @@ export default function App() {
         const data = await res.json()
         setModel(data.groq_model)
       } catch {
-        setModel(data.gemini_model)
+        setModel("Gemini")
       }
     }
     fetchHealth()
   }, [])
 
-  function handleNewChat() {
-    clearChat()
+  async function handleNewChat() {
+    const conversationId = await createNewConversation()
+    if (conversationId) {
+      clearChat()
+      setActiveTab("Chat")
+    }
+  }
+
+  function handleConversationSelect(conversationId) {
+    setActiveConversationId(conversationId)
     setActiveTab("Chat")
+  }
+
+  async function handleSubmit(userInput) {
+    const activeConversation = conversations.find(
+      (conversation) => conversation.id === activeConversationId
+    )
+    const isUntitled = messages.length === 0 && activeConversation?.title === "New Chat"
+
+    if (isUntitled) {
+      const title = userInput.trim().replace(/\s+/g, " ")
+      await updateConversationTitle(
+        activeConversationId,
+        title.length > 40 ? `${title.slice(0, 40).trimEnd()}...` : title
+      )
+    }
+
+    await submitMessage(userInput)
   }
 
   return (
@@ -46,6 +91,9 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onNewChat={handleNewChat}
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onConversationSelect={handleConversationSelect}
       />
 
       <div
@@ -103,7 +151,7 @@ export default function App() {
               messages={messages}
               response={response}
               isLoading={isLoading}
-              onPromptSelect={submitMessage}
+              onPromptSelect={handleSubmit}
               model={model}
             />
 
@@ -120,7 +168,7 @@ export default function App() {
               </div>
             )}
 
-            <ChatBox onSubmit={submitMessage} isLoading={isLoading} />
+            <ChatBox onSubmit={handleSubmit} isLoading={isLoading} />
           </>
         )}
 

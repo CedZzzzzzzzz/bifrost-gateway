@@ -9,12 +9,17 @@ const AUTH_HEADER = {
 
 const BASE_URL = LOCAL_API_BASE_URL || API_BASE_URL
 
-export async function sendChatMessage(messages) {
+export async function sendChatMessage(messages, conversationId) {
+  const body = JSON.stringify({
+    messages,
+    conversation_id: conversationId,
+  })
+
   try {
     const response = await fetch(`${BASE_URL}/api/v1/chat/completions`, {
       method: "POST",
       headers: AUTH_HEADER,
-      body: JSON.stringify({ messages }),
+      body,
     })
 
     if (!response.ok) {
@@ -27,7 +32,7 @@ export async function sendChatMessage(messages) {
     const response = await fetch(`${BASE_URL}/api/v1/chat/completions`, {
       method: "POST",
       headers: AUTH_HEADER,
-      body: JSON.stringify({ messages }),
+      body,
     })
     if (!response.ok) {
       const error = await response.json()
