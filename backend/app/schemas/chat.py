@@ -10,7 +10,7 @@ class ChatRequest(BaseModel): # Accept OpenAI/Claude payloads from cursor, claud
     temperature: float | None = None
     max_tokens: int | None = None
     stream: bool = False
-
+    conversation_id: str | None = None
 
 class ChatGatewayResponse(BaseModel):
     reponse: str

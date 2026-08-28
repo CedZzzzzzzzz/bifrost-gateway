@@ -8,6 +8,7 @@ from app.core.config import (
     SEMANTIC_SIMILARITY_THRESHOLD,
 )
 from app.db.cache import read_cached_response, write_cached_response, read_semantic_cached_response
+from app.db.conversations import add_message
 from app.schemas.chat import ChatRequest
 from app.services.embedding_provider import generate_embedding
 from app.services.gemini_provider import query_gemini_flash
@@ -56,6 +57,16 @@ def build_search_enriched_messages(
     ]
     return [system_message] + user_messages
 
+async def persist_turn(
+    conversation_id: str | None,
+    user_message: str,
+    response_text: str,
+    metadata: dict | None = None,
+) -> None:
+    if conversation_id is not None:
+        await add_message(conversation_id, "user", user_message, metadata)
+        await add_message(conversation_id, "assistant", response_text, metadata)
+
 
 @router.post("/chat/completions")
 async def chat_completion(
@@ -76,6 +87,7 @@ async def chat_completion(
     )
 
     if cached_response is not None:
+        await persist_turn(request.conversation_id, last_user_message, cached_response)
         return JSONResponse(content={
             "response": cached_response,
             "source": "Database cache hit",
@@ -108,6 +120,7 @@ async def chat_completion(
             response=semantic_response,
             embedding=query_embedding,
         )
+        await persist_turn(request.conversation_id, last_user_message, semantic_response)
         return JSONResponse(content={
             "response": semantic_response,
             "source": "Semantic cache hit",
@@ -167,6 +180,7 @@ async def chat_completion(
         response=response_text,
         embedding=query_embedding,
     )
+    await persist_turn(request.conversation_id, last_user_message, response_text)
 
     return JSONResponse(content={
         "response": response_text,
