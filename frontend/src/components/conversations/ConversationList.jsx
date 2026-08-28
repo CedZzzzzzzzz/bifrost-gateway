@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Trash2, Pencil, Check, X } from "lucide-react"
+import { ConfirmModal } from "../ui/ConfirmModal"
 
 function ConversationItem({ 
   conversation, 
@@ -54,7 +55,7 @@ function ConversationItem({
         <button
           onClick={(e) => {
             e.stopPropagation()
-            if (confirm("Delete this conversation?")) onDelete(conversation.id)
+            onDelete(conversation)
           }}
           className="p-1 text-[var(--muted)] hover:text-[var(--rose)]"
         >
@@ -66,20 +67,35 @@ function ConversationItem({
 }
 
 export function ConversationList({ conversations = [], activeConversationId, onSelect, onDelete, onRename, isVisible }) {
-  if (!isVisible || conversations.length === 0) return null
+  const [conversationToDelete, setConversationToDelete] = useState(null)
 
   return (
-    <div className="mt-2 space-y-1 overflow-y-auto max-h-64">
-      {conversations.map((c) => (
-        <ConversationItem
-          key={c.id}
-          conversation={c}
-          isActive={c.id === activeConversationId}
-          onSelect={onSelect}
-          onDelete={onDelete}
-          onRename={onRename}
-        />
-      ))}
-    </div>
+    <>
+      {isVisible && conversations.length > 0 && (
+        <div className="mt-2 space-y-1 overflow-y-auto max-h-64">
+          {conversations.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              isActive={conversation.id === activeConversationId}
+              onSelect={onSelect}
+              onDelete={setConversationToDelete}
+              onRename={onRename}
+            />
+          ))}
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={conversationToDelete !== null}
+        title="Delete conversation?"
+        message={`This will permanently delete "${conversationToDelete?.title || "New Chat"}".`}
+        onCancel={() => setConversationToDelete(null)}
+        onConfirm={() => {
+          onDelete(conversationToDelete.id)
+          setConversationToDelete(null)
+        }}
+      />
+    </>
   )
 }

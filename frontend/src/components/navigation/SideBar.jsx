@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { MessageSquare, Database, BarChart2, Plus, Zap } from "lucide-react"
-import { ConversationList } from "./ConversationList"
+import { ConversationList } from "../conversations/ConversationList"
 
 const BOTTOM_NAV = [
   { id: "Cache", icon: Database, label: "Cache" },
