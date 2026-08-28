@@ -17,6 +17,7 @@ export default function App() {
     activeConversationId,
     setActiveConversationId,
     createNewConversation,
+    deleteConversationById,
     loadConversationMessages,
     updateConversationTitle,
   } = useConversation()
@@ -60,6 +61,18 @@ export default function App() {
     }
   }
 
+  async function handleConversationDelete(conversationId) {
+    await deleteConversationById(conversationId)
+    if (conversationId === activeConversationId) {
+      setActiveConversationId(null)
+      clearChat()
+    }
+  }
+
+  async function handleConversationRename(conversationId, title) {
+    await updateConversationTitle(conversationId, title)
+  }
+
   function handleConversationSelect(conversationId) {
     setActiveConversationId(conversationId)
     setActiveTab("Chat")
@@ -94,6 +107,8 @@ export default function App() {
         conversations={conversations}
         activeConversationId={activeConversationId}
         onConversationSelect={handleConversationSelect}
+        onConversationDelete={handleConversationDelete}
+        onConversationRename={handleConversationRename}
       />
 
       <div

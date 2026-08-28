@@ -1,30 +1,85 @@
-export function ConversationList({
-  conversations = [],
-  activeConversationId,
-  onSelect,
-  isVisible,
-}) {
+import { useEffect, useState } from "react"
+import { Trash2, Pencil, Check, X } from "lucide-react"
+
+function ConversationItem({ 
+  conversation, 
+  isActive, 
+  onSelect, 
+  onDelete, 
+  onRename }) 
+  {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(conversation.title || "New Chat")
+
+  useEffect(() => {
+    setValue(conversation.title || "New Chat")
+  }, [conversation.title])
+
+  function save() {
+    if (value.trim()) onRename(conversation.id, value.trim())
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--surface2)]">
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" ? save() : e.key === "Escape" && setEditing(false)}
+          className="flex-1 bg-transparent text-xs outline-none min-w-0 text-[var(--text)]"
+        />
+        <button onClick={save} className="p-1 text-[var(--emerald)]"><Check size={12} /></button>
+        <button onClick={() => setEditing(false)} className="p-1 text-[var(--muted)]"><X size={12} /></button>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      onClick={() => onSelect(conversation.id)}
+      className={`group/item flex items-center px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
+        isActive ? "bg-[var(--surface2)] text-[var(--frost)]" : "text-[var(--muted2)] hover:bg-[var(--surface)]"
+      }`}
+    >
+      <span className="flex-1 truncate">{conversation.title || "New Chat"}</span>
+      <div className="hidden group-hover/item:flex gap-1 shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); setEditing(true) }}
+          className="p-1 text-[var(--muted)] hover:text-[var(--frost)]"
+        >
+          <Pencil size={11} />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            if (confirm("Delete this conversation?")) onDelete(conversation.id)
+          }}
+          className="p-1 text-[var(--muted)] hover:text-[var(--rose)]"
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function ConversationList({ conversations = [], activeConversationId, onSelect, onDelete, onRename, isVisible }) {
   if (!isVisible || conversations.length === 0) return null
 
   return (
     <div className="mt-2 space-y-1 overflow-y-auto max-h-64">
-      {conversations.map((conversation) => {
-        const isActive = conversation.id === activeConversationId
-
-        return (
-          <button
-            key={conversation.id}
-            onClick={() => onSelect(conversation.id)}
-            className="w-full px-3 py-2 rounded-lg text-left text-xs truncate transition-colors"
-            style={{
-              backgroundColor: isActive ? "var(--surface2)" : "transparent",
-              color: isActive ? "var(--frost)" : "var(--muted2)",
-            }}
-          >
-            {conversation.title || "New Chat"}
-          </button>
-        )
-      })}
+      {conversations.map((c) => (
+        <ConversationItem
+          key={c.id}
+          conversation={c}
+          isActive={c.id === activeConversationId}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onRename={onRename}
+        />
+      ))}
     </div>
   )
 }

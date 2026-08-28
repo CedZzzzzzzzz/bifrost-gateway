@@ -14,6 +14,8 @@ export function SideBar({
   conversations,
   activeConversationId,
   onConversationSelect,
+  onConversationDelete,
+  onConversationRename,
 }) {
   const [hovered, setHovered] = useState(false)
 
@@ -101,6 +103,8 @@ export function SideBar({
           conversations={conversations}
           activeConversationId={activeConversationId}
           onSelect={onConversationSelect}
+          onDelete={onConversationDelete}
+          onRename={onConversationRename}
           isVisible={hovered}
         />
       </div>
